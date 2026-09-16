@@ -1,5 +1,5 @@
 import streamlit as st
-import requests
+from deep_translator import GoogleTranslator
 
 st.set_page_config(
     page_title="Language Translation Tool",
@@ -7,7 +7,7 @@ st.set_page_config(
 )
 
 st.title("🌐 Language Translation Tool")
-st.write("Translate text between different languages")
+st.write("Translate text between different languages.")
 
 languages = {
     "English": "en",
@@ -27,7 +27,7 @@ languages = {
     "Portuguese": "pt",
     "Russian": "ru",
     "Arabic": "ar",
-    "Chinese": "zh",
+    "Chinese": "zh-CN",
     "Japanese": "ja",
     "Korean": "ko"
 }
@@ -49,47 +49,28 @@ with col2:
 
 text = st.text_area(
     "📝 Enter Text",
-    placeholder="Type your text here..."
+    placeholder="Type your text here...",
+    height=150
 )
 
-if st.button("🔄 Translate"):
+if st.button("🔄 Translate", use_container_width=True):
 
     if not text.strip():
         st.warning("Please enter some text.")
 
-    else:
-        source_code = languages[source]
-        target_code = languages[target]
-
-        if source_code == target_code:
-            translated = text
-
-        else:
-            try:
-                url = "https://api.mymemory.translated.net/get"
-
-                params = {
-                    "q": text,
-                    "langpair": f"{source_code}|{target_code}"
-                }
-
-                response = requests.get(
-                    url,
-                    params=params,
-                    timeout=15
-                )
-
-                data = response.json()
-
-                translated = data["responseData"]["translatedText"]
-
-            except Exception:
-                translated = "Translation failed. Please try again."
-
+    elif source == target:
         st.subheader("✅ Translated Text")
-        st.text_area(
-            "Translated Text",
-            translated,
-            height=150
-        )
-        
+        st.text_area("Result", text, height=150)
+
+    else:
+        try:
+            translated = GoogleTranslator(
+                source=languages[source],
+                target=languages[target]
+            ).translate(text)
+
+            st.subheader("✅ Translated Text")
+            st.text_area("Result", translated, height=150)
+
+        except Exception as e:
+            st.error("Translation failed. Please try again.")
