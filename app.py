@@ -1,76 +1,141 @@
 import streamlit as st
-from deep_translator import GoogleTranslator
+import requests
+from gtts import gTTS
+import tempfile
 
-st.set_page_config(
-    page_title="Language Translation Tool",
-    page_icon="🌐"
-)
-
-st.title("🌐 Language Translation Tool")
-st.write("Translate text between different languages.")
 
 languages = {
     "English": "en",
-    "Telugu": "te",
     "Hindi": "hi",
+    "Telugu": "te",
     "Tamil": "ta",
     "Kannada": "kn",
-    "Malayalam": "ml",
     "Marathi": "mr",
     "Bengali": "bn",
     "Gujarati": "gu",
-    "Punjabi": "pa",
     "French": "fr",
     "German": "de",
     "Spanish": "es",
-    "Italian": "it",
-    "Portuguese": "pt",
-    "Russian": "ru",
-    "Arabic": "ar",
-    "Chinese": "zh-CN",
     "Japanese": "ja",
-    "Korean": "ko"
+    "Chinese": "zh-CN",
+    "Korean": "ko",
+    "Arabic": "ar"
 }
+
+
+st.set_page_config(
+    page_title="AI Language Translator",
+    page_icon="🌍",
+    layout="wide"
+)
+
+
+st.title("🌍 AI Language Translator")
+st.subheader("Translate text instantly between multiple languages")
+
 
 col1, col2 = st.columns(2)
 
+
 with col1:
-    source = st.selectbox(
-        "Source Language",
-        list(languages.keys())
+    text_input = st.text_area(
+        "📝 Enter Text",
+        placeholder="Type your text here...",
+        height=180
     )
 
+    source_language = st.selectbox(
+        "🌐 Source Language",
+        list(languages.keys()),
+        index=0
+    )
+
+
 with col2:
-    target = st.selectbox(
-        "Target Language",
+    target_language = st.selectbox(
+        "🎯 Target Language",
         list(languages.keys()),
         index=1
     )
 
-text = st.text_area(
-    "📝 Enter Text",
-    placeholder="Type your text here...",
-    height=150
-)
 
-if st.button("🔄 Translate", use_container_width=True):
+if st.button("🔄 Translate", type="primary"):
 
-    if not text.strip():
+    if not text_input.strip():
         st.warning("Please enter some text.")
 
-    elif source == target:
-        st.subheader("✅ Translated Text")
-        st.text_area("Result", text, height=150)
+    elif source_language == target_language:
+        translated_text = text_input
+
+        st.success("Translation completed!")
+
+        st.text_area(
+            "✨ Translated Text",
+            translated_text,
+            height=180
+        )
 
     else:
         try:
-            translated = GoogleTranslator(
-                source=languages[source],
-                target=languages[target]
-            ).translate(text)
+            url = "https://translate.googleapis.com/translate_a/single"
 
-            st.subheader("✅ Translated Text")
-            st.text_area("Result", translated, height=150)
+            params = {
+                "client": "gtx",
+                "sl": languages[source_language],
+                "tl": languages[target_language],
+                "dt": "t",
+                "q": text_input
+            }
+
+            response = requests.get(
+                url,
+                params=params,
+                timeout=15
+            )
+
+            response.raise_for_status()
+
+            data = response.json()
+
+            translated_text = ""
+
+            for item in data[0]:
+                if item[0]:
+                    translated_text += item[0]
+
+            if not translated_text:
+                raise Exception("No translation was returned.")
+
+            st.success("Translation completed!")
+
+            st.text_area(
+                "✨ Translated Text",
+                translated_text,
+                height=180
+            )
+
+            # Text-to-Speech
+            tts = gTTS(
+                text=translated_text,
+                lang=languages[target_language]
+            )
+
+            audio_file = tempfile.NamedTemporaryFile(
+                delete=False,
+                suffix=".mp3"
+            )
+
+            tts.save(audio_file.name)
+
+            st.audio(audio_file.name)
 
         except Exception as e:
-            st.error("Translation failed. Please try again.")
+            st.error("Translation error: " + str(e))
+
+
+st.markdown("---")
+
+st.caption(
+    "AI Language Translation Tool | Built with Python, "
+    "Streamlit & Google Translate"
+)
