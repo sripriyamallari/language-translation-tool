@@ -1,22 +1,20 @@
 import streamlit as st
 import requests
 
-# Page settings
+# -----------------------------------
+# Page Configuration
+# -----------------------------------
 st.set_page_config(
-    page_title="Language Translation Tool",
+    page_title="AI Language Translation Tool",
     page_icon="🌍",
     layout="centered"
 )
 
-st.title("🌍 Language Translation Tool")
-st.write("Translate text between different languages")
-
-# Languages
+# -----------------------------------
+# Language List
+# -----------------------------------
 languages = {
     "English": "en",
-    "Spanish": "es",
-    "French": "fr",
-    "German": "de",
     "Hindi": "hi",
     "Telugu": "te",
     "Tamil": "ta",
@@ -24,50 +22,102 @@ languages = {
     "Marathi": "mr",
     "Bengali": "bn",
     "Gujarati": "gu",
+    "Spanish": "es",
+    "French": "fr",
+    "German": "de",
+    "Italian": "it",
+    "Portuguese": "pt",
+    "Russian": "ru",
     "Arabic": "ar",
-    "Chinese": "zh",
     "Japanese": "ja",
-    "Korean": "ko"
+    "Korean": "ko",
+    "Chinese": "zh-CN"
 }
 
-# Language selection
+# -----------------------------------
+# Custom CSS
+# -----------------------------------
+st.markdown(
+    """
+    <style>
+    .main-title {
+        text-align: center;
+        font-size: 36px;
+        font-weight: bold;
+    }
+
+    .subtitle {
+        text-align: center;
+        font-size: 18px;
+        margin-bottom: 25px;
+    }
+
+    .stButton > button {
+        width: 100%;
+        font-size: 18px;
+        font-weight: bold;
+        border-radius: 10px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# -----------------------------------
+# Title
+# -----------------------------------
+st.markdown(
+    '<div class="main-title">🌍 AI Language Translation Tool</div>',
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    '<div class="subtitle">Translate text between multiple languages easily</div>',
+    unsafe_allow_html=True
+)
+
+# -----------------------------------
+# Language Selection
+# -----------------------------------
 col1, col2 = st.columns(2)
 
 with col1:
     source_language = st.selectbox(
-        "From",
+        "🌐 From",
         list(languages.keys())
     )
 
 with col2:
     target_language = st.selectbox(
-        "To",
+        "🎯 To",
         list(languages.keys()),
         index=1
     )
 
-# Text input
+# -----------------------------------
+# Text Input
+# -----------------------------------
 text = st.text_area(
-    "Enter text",
+    "📝 Enter Text",
     placeholder="Type your text here...",
-    height=150
+    height=180
 )
 
-# Translation function
+# -----------------------------------
+# Translation Function
+# -----------------------------------
 def translate_text(text, source, target):
 
-    url = "https://libretranslate.com/translate"
+    url = "https://api.mymemory.translated.net/get"
 
-    data = {
+    params = {
         "q": text,
-        "source": source,
-        "target": target,
-        "format": "text"
+        "langpair": f"{source}|{target}"
     }
 
-    response = requests.post(
+    response = requests.get(
         url,
-        data=data,
+        params=params,
         timeout=30
     )
 
@@ -75,33 +125,50 @@ def translate_text(text, source, target):
 
     result = response.json()
 
-    return result["translatedText"]
+    # Check API response
+    if result.get("responseStatus") != 200:
+        error_message = result.get(
+            "responseDetails",
+            "Translation service failed."
+        )
+        raise Exception(error_message)
+
+    translated_text = result.get("responseData", {}).get(
+        "translatedText"
+    )
+
+    if not translated_text:
+        raise Exception("No translation was returned.")
+
+    return translated_text
 
 
-# Translate button
+# -----------------------------------
+# Translate Button
+# -----------------------------------
 if st.button("🔄 Translate", type="primary"):
 
     if not text.strip():
 
-        st.warning("Please enter some text.")
+        st.warning("⚠️ Please enter some text.")
 
     elif source_language == target_language:
 
-        st.success("Translation completed!")
+        st.success("✅ Translation completed!")
 
         st.text_area(
-            "Translated Text",
+            "✨ Translated Text",
             text,
-            height=150
+            height=180
         )
 
     else:
 
         try:
 
-            with st.spinner("Translating..."):
+            with st.spinner("🔄 Translating..."):
 
-                result = translate_text(
+                translated_text = translate_text(
                     text,
                     languages[source_language],
                     languages[target_language]
@@ -110,15 +177,37 @@ if st.button("🔄 Translate", type="primary"):
             st.success("✅ Translation completed!")
 
             st.text_area(
-                "Translated Text",
-                result,
-                height=150
+                "✨ Translated Text",
+                translated_text,
+                height=180
+            )
+
+        except requests.exceptions.Timeout:
+
+            st.error(
+                "❌ Translation service took too long to respond. "
+                "Please try again."
+            )
+
+        except requests.exceptions.RequestException:
+
+            st.error(
+                "❌ Unable to connect to the translation service. "
+                "Please try again."
             )
 
         except Exception as e:
 
-            st.error("❌ Translation failed.")
-            st.info(
-                "The free translation server may be temporarily "
-                "busy. Please try again."
+            st.error(
+                f"❌ Translation failed: {str(e)}"
             )
+
+# -----------------------------------
+# Footer
+# -----------------------------------
+st.markdown("---")
+
+st.caption(
+    "AI Language Translation Tool | "
+    "Built with Python, Streamlit & Translation API"
+)
