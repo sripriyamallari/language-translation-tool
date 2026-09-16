@@ -3,7 +3,9 @@ import requests
 from gtts import gTTS
 import tempfile
 
-
+# -----------------------------
+# Language list
+# -----------------------------
 languages = {
     "English": "en",
     "Hindi": "hi",
@@ -22,20 +24,43 @@ languages = {
     "Arabic": "ar"
 }
 
-
+# -----------------------------
+# Page configuration
+# -----------------------------
 st.set_page_config(
     page_title="AI Language Translator",
     page_icon="🌍",
     layout="wide"
 )
 
+# -----------------------------
+# Styling
+# -----------------------------
+st.markdown("""
+<style>
+.stButton > button {
+    width: 100%;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: bold;
+}
 
+textarea {
+    border-radius: 10px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# -----------------------------
+# Title
+# -----------------------------
 st.title("🌍 AI Language Translator")
 st.subheader("Translate text instantly between multiple languages")
 
-
+# -----------------------------
+# Input
+# -----------------------------
 col1, col2 = st.columns(2)
-
 
 with col1:
     text_input = st.text_area(
@@ -50,7 +75,6 @@ with col1:
         index=0
     )
 
-
 with col2:
     target_language = st.selectbox(
         "🎯 Target Language",
@@ -58,16 +82,53 @@ with col2:
         index=1
     )
 
+# -----------------------------
+# Translation function
+# -----------------------------
+def translate_text(text, source, target):
+    api_key = st.secrets["GOOGLE_TRANSLATE_API_KEY"]
 
+    url = "https://translation.googleapis.com/language/translate/v2"
+
+    params = {
+        "key": api_key
+    }
+
+    data = {
+        "q": text,
+        "source": source,
+        "target": target,
+        "format": "text"
+    }
+
+    response = requests.post(
+        url,
+        params=params,
+        json=data,
+        timeout=30
+    )
+
+    response.raise_for_status()
+
+    result = response.json()
+
+    return result["data"]["translations"][0]["translatedText"]
+
+
+# -----------------------------
+# Translate button
+# -----------------------------
 if st.button("🔄 Translate", type="primary"):
 
     if not text_input.strip():
-        st.warning("Please enter some text.")
+
+        st.warning("⚠️ Please enter some text.")
 
     elif source_language == target_language:
+
         translated_text = text_input
 
-        st.success("Translation completed!")
+        st.success("✅ Translation completed!")
 
         st.text_area(
             "✨ Translated Text",
@@ -76,37 +137,18 @@ if st.button("🔄 Translate", type="primary"):
         )
 
     else:
+
         try:
-            url = "https://translate.googleapis.com/translate_a/single"
 
-            params = {
-                "client": "gtx",
-                "sl": languages[source_language],
-                "tl": languages[target_language],
-                "dt": "t",
-                "q": text_input
-            }
+            with st.spinner("Translating..."):
 
-            response = requests.get(
-                url,
-                params=params,
-                timeout=15
-            )
+                translated_text = translate_text(
+                    text_input,
+                    languages[source_language],
+                    languages[target_language]
+                )
 
-            response.raise_for_status()
-
-            data = response.json()
-
-            translated_text = ""
-
-            for item in data[0]:
-                if item[0]:
-                    translated_text += item[0]
-
-            if not translated_text:
-                raise Exception("No translation was returned.")
-
-            st.success("Translation completed!")
+            st.success("✅ Translation completed!")
 
             st.text_area(
                 "✨ Translated Text",
@@ -114,28 +156,50 @@ if st.button("🔄 Translate", type="primary"):
                 height=180
             )
 
+            # -----------------------------
             # Text-to-Speech
-            tts = gTTS(
-                text=translated_text,
-                lang=languages[target_language]
+            # -----------------------------
+            try:
+
+                tts = gTTS(
+                    text=translated_text,
+                    lang=languages[target_language]
+                )
+
+                audio_file = tempfile.NamedTemporaryFile(
+                    delete=False,
+                    suffix=".mp3"
+                )
+
+                tts.save(audio_file.name)
+
+                st.audio(audio_file.name)
+
+            except Exception:
+                st.info("🔊 Audio is not available for this language.")
+
+        except requests.exceptions.HTTPError as e:
+
+            st.error(
+                "❌ Translation API error. "
+                "Please check your Google Cloud API key and API setup."
             )
-
-            audio_file = tempfile.NamedTemporaryFile(
-                delete=False,
-                suffix=".mp3"
-            )
-
-            tts.save(audio_file.name)
-
-            st.audio(audio_file.name)
 
         except Exception as e:
-            st.error("Translation error: " + str(e))
+
+            st.error(
+                "❌ Translation error: " + str(e)
+            )
 
 
+# -----------------------------
+# Footer
+# -----------------------------
 st.markdown("---")
 
 st.caption(
-    "AI Language Translation Tool | Built with Python, "
-    "Streamlit & Google Translate"
+    "AI Language Translation Tool | "
+    "Built with Python, Streamlit & Google Cloud Translation"
 )
+    
+        
