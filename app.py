@@ -1,6 +1,13 @@
-import gradio as gr
+import streamlit as st
 import requests
 
+st.set_page_config(
+    page_title="Language Translation Tool",
+    page_icon="🌐"
+)
+
+st.title("🌐 Language Translation Tool")
+st.write("Translate text between different languages")
 
 languages = {
     "English": "en",
@@ -25,91 +32,64 @@ languages = {
     "Korean": "ko"
 }
 
+col1, col2 = st.columns(2)
 
-def translate_text(text, source, target):
+with col1:
+    source = st.selectbox(
+        "Source Language",
+        list(languages.keys())
+    )
+
+with col2:
+    target = st.selectbox(
+        "Target Language",
+        list(languages.keys()),
+        index=1
+    )
+
+text = st.text_area(
+    "📝 Enter Text",
+    placeholder="Type your text here..."
+)
+
+if st.button("🔄 Translate"):
 
     if not text.strip():
-        return "Please enter some text."
+        st.warning("Please enter some text.")
 
-    source_code = languages[source]
-    target_code = languages[target]
+    else:
+        source_code = languages[source]
+        target_code = languages[target]
 
-    if source_code == target_code:
-        return text
+        if source_code == target_code:
+            translated = text
 
-    try:
+        else:
+            try:
+                url = "https://api.mymemory.translated.net/get"
 
-        url = "https://api.mymemory.translated.net/get"
+                params = {
+                    "q": text,
+                    "langpair": f"{source_code}|{target_code}"
+                }
 
-        params = {
-            "q": text,
-            "langpair": f"{source_code}|{target_code}"
-        }
+                response = requests.get(
+                    url,
+                    params=params,
+                    timeout=15
+                )
 
-        response = requests.get(
-            url,
-            params=params,
-            timeout=15
+                data = response.json()
+
+                translated = data["responseData"]["translatedText"]
+
+            except Exception:
+                translated = "Translation failed. Please try again."
+
+        st.subheader("✅ Translated Text")
+        st.text_area(
+            "Translated Text",
+            translated,
+            height=150
         )
-
-        data = response.json()
-
-        translation = data["responseData"]["translatedText"]
-
-        return translation
-
-    except Exception:
-        return "Translation failed. Please try again."
-
-
-with gr.Blocks(
-    title="Language Translation Tool"
-) as demo:
-
-    gr.Markdown(
-        """
-        # 🌐 Language Translation Tool
-
-        Translate text between different languages.
-        """
-    )
-
-    with gr.Row():
-
-        source = gr.Dropdown(
-            choices=list(languages.keys()),
-            value="English",
-            label="Source Language"
-        )
-
-        target = gr.Dropdown(
-            choices=list(languages.keys()),
-            value="Telugu",
-            label="Target Language"
-        )
-
-    input_text = gr.Textbox(
-        label="📝 Enter Text",
-        placeholder="Type your text here...",
-        lines=6
-    )
-
-    translate_button = gr.Button(
-        "🔄 Translate",
-        variant="primary"
-    )
-
-    output_text = gr.Textbox(
-        label="✅ Translated Text",
-        lines=6
-    )
-
-    translate_button.click(
-        fn=translate_text,
-        inputs=[input_text, source, target],
-        outputs=output_text
-    )
-
-
-if __name__ == "__main__":
-    demo.launch()
+        
